@@ -1,13 +1,4 @@
-import os
-
-# GLOBAL VARS
-global_vars = {
-    "running": False,
-    "task": None
-}
-
-SQLALCHEMY_DATABASE_URL = os.getenv("SQLALCHEMY_DATABASE_URL_MLFLOW")
-# WORKER_API = os.getenv("WORKER_API")
+import mlflow as mlf
 
 # @@@@@@@ KC SETTINGS @@@@@@
 # realm = os.getenv('KEYCLOAK_REALM')
@@ -16,3 +7,16 @@ SQLALCHEMY_DATABASE_URL = os.getenv("SQLALCHEMY_DATABASE_URL_MLFLOW")
 # authorization_url = keycloack_url + "realms/" + realm + "/protocol/openid-connect/auth"
 # token_url = keycloack_url + "realms/" + realm + "/protocol/openid-connect/token"
 # keycloack_admin = os.getenv('KEYCLOAK_ADMIN')
+from hydra import initialize, compose
+
+initialize(version_base=None, config_path="conf")
+cfg = compose(config_name="config")
+TRACKING_URI = cfg["mlflow"]["ip"]
+HOST = cfg["app"]["host"]
+PORT = cfg["app"]["port"]
+
+# t_cfg = compose(config_name="test_upm")
+# FTRACKING_URI=t_cfg["ip"]
+
+mlf.set_tracking_uri(TRACKING_URI)
+client = mlf.MlflowClient(tracking_uri=TRACKING_URI)

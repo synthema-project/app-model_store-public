@@ -9,10 +9,10 @@ router = APIRouter(
 )
 
 
-@router.get("/{run_id}")
+@router.get("/{experiment_id}/{run_id}")
 # async def get_run(run_id: str, current_user=Security(auth.get_current_user)):
-async def get_run(run_id: str):
-    return client.search_runs(filter_string=f"id = '{run_id}'")
+async def get_run(run_id: str, experiment_id: str):
+    return client.search_runs(filter_string=f"run_id = '{run_id}'", experiment_ids=f'{experiment_id}')
 
 
 @router.get("/artifacts/{run_id}")

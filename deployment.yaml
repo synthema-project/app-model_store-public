@@ -14,8 +14,8 @@ spec:
     spec:
       containers:
         - name: synthema-proxy-mlflow
-          image: santiagobarriol/synthema-proxy-mlflow
-          imagePullPolicy: Always
+          image: synthema-mlflow-proxy:latest
+          imagePullPolicy: Never
           ports:
             - containerPort: 8000
 ---

@@ -3,7 +3,7 @@ import mlflow
 
 class FLModel(mlflow.pyfunc.PythonModel):
 
-    def create_strategy(self, num_rounds: int):
+    def create_strateg(self, num_rounds: int):
         import flwr
         from flwr.server.strategy import FedAvg
         from flwr.server.client_proxy import ClientProxy
@@ -61,6 +61,6 @@ class FLModel(mlflow.pyfunc.PythonModel):
 model = FLModel()
 
 import cloudpickle
-with open('model.pk', 'wb') as f:
+with open('fail_model.pk', 'wb') as f:
     cloudpickle.dump(model, f)
 
