@@ -1,0 +1,25 @@
+---
+version: "3.4"
+
+networks:
+  synthema-net:
+    name: synthema-net
+    external: false
+
+
+services:
+  mflow-proxy:
+    container_name: mlflow-proxy
+    build:
+      dockerfile: Dockerfile
+      context: .
+    ports:
+      - "8000:8000" 
+    environment:
+      TRACKING_URI: ${TRACKING_URI}
+      HOST: ${HOST}
+      POSTGRES_DB: ${PORT}
+    env_file:
+      - .env
+    networks:
+      - synthema-net
