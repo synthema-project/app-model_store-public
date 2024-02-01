@@ -1,13 +1,15 @@
 from typing import Literal
 import cloudpickle
+
 from starlette.responses import StreamingResponse, Response
 
 from config import client, mlf
 import pickle
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form
 from helpers import logger
 
 log = logger.setup_applevel_logger("router-models")
+
 
 router = APIRouter(
     prefix="/models",
@@ -38,10 +40,10 @@ async def get_model_versions(model_name: str):
 # async def create_model(model_name: str , file: UploadFile = File(...), current_user=Security(auth.get_current_user)):
 async def upload_model(
         model_name: str,
-        description: str,
-        disease: Literal["AML", "SCD"],
-        file: UploadFile = File(...),
-        trained: bool = False
+        disease: Literal["AML", "SCD"] = Form(),
+        description: str = Form(),
+        trained: bool = Form(),
+        file: UploadFile = File(...)
 ):
     mlf.set_experiment(model_name)
     py_model = file.file.read()

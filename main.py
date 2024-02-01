@@ -10,10 +10,6 @@ from routers import models, experiments, runs
 def create_app():
     log = logger.setup_applevel_logger("main.py")
 
-    log.warning(HOST)
-    log.warning(PORT)
-    log.warning(TRACKING_URI)
-
     app = FastAPI(
         swagger_ui_init_oauth={
             "usePkceWithAuthorizationCodeGrant": True
