@@ -37,7 +37,6 @@ async def get_model_versions(model_name: str):
 
 
 @router.post("/upload/{model_name}", status_code=201)
-# async def create_model(model_name: str , file: UploadFile = File(...), current_user=Security(auth.get_current_user)):
 async def upload_model(
         model_name: str,
         disease: Literal["AML", "SCD"] = Form(),
