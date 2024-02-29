@@ -20,7 +20,7 @@ spec:
             - containerPort: 8000
           env:
             - name: TRACKING_URI
-              value: "http://192.168.0.166:5000"
+              value: "http://synthema-mlflow.default.svc.cluster.local:5000"
             - name: HOST
               value: "0.0.0.0"
             - name: PORT
@@ -39,4 +39,4 @@ spec:
     - port: 8000
       protocol: TCP
       targetPort: 8000
-      nodePort: 31001
+      nodePort: 31002
