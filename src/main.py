@@ -1,5 +1,4 @@
-from config import HOST, PORT
-
+from config import MLFLOW_PROXY_PORT
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,8 +6,6 @@ from routers import models, experiments, runs
 
 
 def create_app():
-    log = logger.setup_applevel_logger("main.py")
-
     app = FastAPI(
         swagger_ui_init_oauth={
             "usePkceWithAuthorizationCodeGrant": True
@@ -28,17 +25,14 @@ def create_app():
     )
 
     @app.get("/")
-    async def root(
-            # current_user=Security(auth.get_current_user, scopes=["/admin"])
-    ):
-        # print(current_user, flush=True)
+    async def root():
         return {"message": "Pong"}
 
-    return app, log
+    return app
 
 
 def startup_app(app):
-    uvicorn.run(app, host=HOST, port=PORT)
+    uvicorn.run(app, host='0.0.0.0', port=MLFLOW_PROXY_PORT)
 
 
 if __name__ == "__main__":
