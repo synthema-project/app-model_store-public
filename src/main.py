@@ -3,7 +3,6 @@ from config import HOST, PORT
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from helpers import logger
 from routers import models, experiments, runs
 
 

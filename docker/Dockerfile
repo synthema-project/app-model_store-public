@@ -1,8 +1,8 @@
 FROM tiangolo/uvicorn-gunicorn-fastapi:python3.11-slim
 WORKDIR /code
-COPY requirements.txt .
+COPY ../requirements.txt .
 RUN pip install python-multipart
 RUN pip install -r requirements.txt
-COPY . .
+COPY ../src .
 EXPOSE 8000
-CMD python main.py
+CMD python src/main.py
