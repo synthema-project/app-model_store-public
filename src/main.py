@@ -1,4 +1,4 @@
-from config import HOST, PORT, TRACKING_URI
+from config import HOST, PORT
 
 import uvicorn
 from fastapi import FastAPI

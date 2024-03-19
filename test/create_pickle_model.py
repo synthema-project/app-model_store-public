@@ -49,7 +49,7 @@ class FLModel(mlflow.pyfunc.PythonModel):
                 return self.model.fit
             def fit(self, x_train,y_train, epochs=1, batch_size=32, steps_per_epoch=3):
                 self.model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, steps_per_epoch=steps_per_epoch)
-            def get_weight(self):
+            def get_weights(self):
                 return self.model.get_weights()
             def set_weight(self,parameters):
                 return self.model.set_weights(parameters)
