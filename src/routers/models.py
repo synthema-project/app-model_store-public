@@ -1,8 +1,6 @@
 from typing import Literal
 import cloudpickle
-
 from starlette.responses import StreamingResponse, Response
-
 from config import client, mlf
 import pickle
 from fastapi import APIRouter, UploadFile, File, HTTPException, Form
@@ -19,25 +17,21 @@ router = APIRouter(
 
 
 @router.get("/")
-# async def get_models(current_user=Security(auth.get_current_user)):
 async def get_models():
     return client.search_registered_models()
 
 
 @router.get("/{model_name}")
-# async def get_model(model_name: str, current_user=Security(auth.get_current_user)):
 async def get_model(model_name: str):
     return client.search_registered_models(filter_string=f"name = '{model_name}'")
 
 
 @router.get("/{model_name}/versions")
-# async def get_model(model_name: str, current_user=Security(auth.get_current_user)):
 async def get_model_versions(model_name: str):
     return client.search_model_versions(filter_string=f"name = '{model_name}'")
 
 
 @router.post("/upload/{model_name}", status_code=201)
-# async def create_model(model_name: str , file: UploadFile = File(...), current_user=Security(auth.get_current_user)):
 async def upload_model(
         model_name: str,
         disease: Literal["AML", "SCD"] = Form(),
@@ -77,8 +71,6 @@ async def upload_model(
     }
     for key, value in tags.items():
         client.set_model_version_tag(model_name, version, key, value)
-    # client.set_model_version_tag(model_name, version, "disease", disease)
-    # client.set_model_version_tag(model_name, version, "trained", trained)
     return {
         "detail": f"Model \'{model_name}\' registered.",
         "model_uuid": model_info.model_uuid,
