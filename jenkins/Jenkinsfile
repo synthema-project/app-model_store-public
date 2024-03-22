@@ -1,0 +1,131 @@
+pipeline {
+    agent {
+        node {
+            label 'mlflow-proxy-dev'
+        }
+    }
+    environment {
+        MLFLOW_TRACKING_URI = "synthema-mlflow"
+        MLFLOW_PROXY_PORT = "5003"
+        APP_NAME = "synthema-proxy-mlflow"
+        APP_URL = "https://proxy-mlflow.k8s.synthema.rid-intrasoft.eu"
+        MAJOR_RELEASE = 0.1.1
+        DOCKER_TAG = "${MAJOR_RELEASE}"
+        DOCKER_REG = "harbor.synthema.rid-intrasoft.eu"
+        DOCKER_REPO = "/synthema/"
+        DOCKER_REG_CREDS = "harbor-jenkins-creds"
+    }
+
+    stages {
+        // *************************
+        // *** IMAGE BUILD STAGE ***
+        // *************************
+        stage("Build_Images"){
+            steps {
+                echo "***** Building Image *****"
+                // Build the image and push a test tag to the remote repository
+                sh 'docker image build -t ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:test SourceCode'
+                sh 'docker image push ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:test'
+            }
+        }
+
+        // **************************
+        // *** RUN THE UNIT TESTS ***
+        // **************************
+//         stage("Unit_Tests"){
+//             steps{
+//                 sh 'docker container run -e "PYTHONPATH=/dummyrest" -P --name ${APP_NAME}p --rm ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:test pytest'
+//             }
+//         }
+
+        // **************************************
+        // *** Functional & Integration Tests ***
+        // **************************************
+        stage("Func_Tests"){
+            steps {
+                echo "***** Running Functional Tests *****"
+                // Deploy the test image
+                sh '''
+
+
+                '''
+                withKubeConfig([credentialsId: 'k8s-admin']) {
+                    sh '''
+                    cp k8s/mlflow_proxy.yaml k8s/mlflow_proxy-test.yaml
+                    sed -e 's|DOCKER_TAG|test|g' k8s/mlflow_proxy-test.yaml | kubectl apply -f -
+                    '''
+                }
+                Execute the tests
+                sh 'sleep 60 && bash tests/func_test.sh ${APP_URL}'
+                // Destroy the deployment
+                withKubeConfig([credentialsId: 'k8s-admin']) {
+                    sh '''
+                    kubectl delete -f k8s/mlflow_proxy-test.yaml
+                    rm k8s/mlflow_proxy-test.yaml
+                    '''
+               }
+            }
+        }
+
+        // *******************************
+        // *** Push Images To Registry ***
+        // *******************************
+        stage("Push_Image"){
+            when {
+                environment name: "GIT_BRANCH", value: "origin/master"
+            }
+            steps {
+                withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'harbor-jenkins-creds', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]){
+                    echo "***** Push Container Image *****"
+                    // Login to the remote Docker Registry
+                    sh 'docker login ${DOCKER_REG} -u ${USERNAME} -p ${PASSWORD}'
+                    // Build the images
+                    sh 'docker image tag ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:test ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:latest'
+                    sh 'docker image tag ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:test ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:${DOCKER_TAG}'
+                    sh 'docker image push ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:${DOCKER_TAG}'
+                    sh 'docker image push ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:latest'
+                }
+            }
+        }
+        // **************
+        // *** Deploy ***
+        // **************
+        stage("Deployment"){
+            when {
+                environment name: "GIT_BRANCH", value: "origin/master"
+            }
+
+            steps {
+                withKubeConfig([credentialsId: 'k8s-admin']) {
+                    sh '''
+                    cp k8s/mlflow_proxy-staging.yaml k8s/mlflow_proxy-staging-${DOCKER_TAG}.yaml
+                    sed -e "s|DOCKER_TAG|${DOCKER_TAG}|g" k8/k8_mlflow_proxy-staging-${DOCKER_TAG}.yaml | kubectl apply -f -
+                    '''
+               }
+            }
+        }
+        // **************************
+        // *** Clean Up Resources ***
+        // **************************
+        stage("Clean Up Docker Resources"){
+            steps {
+                sh '''
+                docker image rm ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:${DOCKER_TAG} || true
+                docker image rm ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:latest || true
+                docker image rm ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:test || true
+                '''
+            }
+        }
+    }
+    // post{
+        // failure{
+        //     // slackSend (color: "#FF0000", message: "Job FAILED: '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})")
+        //     sh 'docker image rm ${APP_NAME}:test &> /dev/null || True'
+        //     sh 'DOCKER_TAG=test docker compose down --rmi all'
+        // }
+
+        // success{
+        //     slackSend (color: "#008000", message: "Job SUCCESSFUL: '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})")
+        // }
+    // }
+}
