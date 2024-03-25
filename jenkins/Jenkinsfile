@@ -1,15 +1,15 @@
 pipeline {
     agent {
         node {
-            label 'mlflow-proxy-dev'
+            label 'jenkins-dev'
         }
     }
     environment {
-        MLFLOW_TRACKING_URI = "synthema-mlflow"
-        MLFLOW_PROXY_PORT = "5003"
+//         MLFLOW_TRACKING_URI = "synthema-mlflow"
+//         MLFLOW_PROXY_PORT = "5003"
         APP_NAME = "synthema-proxy-mlflow"
         APP_URL = "https://proxy-mlflow.k8s.synthema.rid-intrasoft.eu"
-        MAJOR_RELEASE = 0.1.1
+        MAJOR_RELEASE = 0.1${env.BUILD_NUMBER}
         DOCKER_TAG = "${MAJOR_RELEASE}"
         DOCKER_REG = "harbor.synthema.rid-intrasoft.eu"
         DOCKER_REPO = "/synthema/"
@@ -24,7 +24,7 @@ pipeline {
             steps {
                 echo "***** Building Image *****"
                 // Build the image and push a test tag to the remote repository
-                sh 'docker image build -t ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:test SourceCode'
+                sh 'docker image build -t ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:test proxy-mlflow-test'
                 sh 'docker image push ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:test'
             }
         }
