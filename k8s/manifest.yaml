@@ -27,7 +27,8 @@ spec:
           env:
             - name: MLFLOW_TRACKING_URI
               value: "http://mlflow"
-          command: ["python", "/app/src/main.py"]
+          command: ["ls", "-la"]
+          # command: ["python", "/app/src/main.py"]
 ---
 apiVersion: v1
 kind: Service
