@@ -36,5 +36,5 @@ def startup_app(app, port: int):
 
 
 if __name__ == "__main__":
-    app, log = create_app()
+    app = create_app()
     startup_app(app, port=80)
