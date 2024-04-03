@@ -31,7 +31,7 @@ pipeline {
         // **************************
         stage("Unit_Tests"){
             steps{
-                sh 'docker container run -p 80:80 --name ${APP_NAME}p --rm ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:test python -m pytest src/tests/unit'
+                sh 'docker container run -p 80:80 --name ${APP_NAME}p --rm ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:test python -m pytest tests/unit'
             }
         }
 
@@ -54,7 +54,7 @@ pipeline {
                     script {
                         def namespace = 'synthema-dev'
                         def podName = sh(script: "kubectl get pods -n ${namespace} -l app=app-model-store -o jsonpath='{.items[0].metadata.name}'", returnStdout: true).trim()
-                        sh "kubectl exec ${podName} -n ${namespace} -- python -m pytest src/tests/functional"
+                        sh "kubectl exec ${podName} -n ${namespace} -- python -m pytest tests/functional"
                     }
                 }
                 // Destroy the deployment
