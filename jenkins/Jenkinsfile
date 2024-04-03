@@ -6,8 +6,8 @@ pipeline {
     }
     environment {
         APP_NAME = "app-model-store"
-        MAJOR_RELEASE = 0.1${env.BUILD_NUMBER}
-        DOCKER_TAG = "${MAJOR_RELEASE}"
+        MAJOR_RELEASE = 0.1
+        DOCKER_TAG = "${MAJOR_RELEASE}.${env.BUILD_NUMBER}"
         DOCKER_REG = "harbor.synthema.rid-intrasoft.eu"
         DOCKER_REPO = "/synthema/"
         DOCKER_REG_CREDS = "harbor-jenkins-creds"
