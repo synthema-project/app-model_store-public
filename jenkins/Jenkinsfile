@@ -115,11 +115,11 @@ pipeline {
             docker image rm ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:test || true
             '''
         }
-        failure{
-        //     // slackSend (color: "#FF0000", message: "Job FAILED: '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})")
-        //     sh 'docker image rm ${APP_NAME}:test &> /dev/null || True'
-        //     sh 'DOCKER_TAG=test docker compose down --rmi all'
-        }
+        // failure{
+        // //     // slackSend (color: "#FF0000", message: "Job FAILED: '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})")
+        // //     sh 'docker image rm ${APP_NAME}:test &> /dev/null || True'
+        // //     sh 'DOCKER_TAG=test docker compose down --rmi all'
+        // }
 
         // success{
         //     slackSend (color: "#008000", message: "Job SUCCESSFUL: '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})")
