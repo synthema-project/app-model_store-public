@@ -23,6 +23,8 @@ def mock_mlflow_uri(monkeysession, pytestconfig):
         shutil.rmtree("mlruns")
     elif env == "local-k8":
         raise NotImplementedError("Kubernetes environment not implemented")
+    elif env == "cloud":
+        yield
     else:
         raise ValueError(f"Unknown environment: {env}")
 
