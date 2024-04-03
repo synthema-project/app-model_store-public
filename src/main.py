@@ -1,8 +1,8 @@
-from config import MLFLOW_PROXY_PORT
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import models, experiments, runs
+
+from src.routers import models, experiments, runs
 
 
 def create_app():
@@ -31,10 +31,10 @@ def create_app():
     return app
 
 
-def startup_app(app):
-    uvicorn.run(app, host='0.0.0.0', port=MLFLOW_PROXY_PORT)
+def startup_app(app, port: int):
+    uvicorn.run(app, host='0.0.0.0', port=port)
 
 
 if __name__ == "__main__":
     app, log = create_app()
-    startup_app(app)
+    startup_app(app, port=80)

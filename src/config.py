@@ -1,9 +1,9 @@
-import mlflow as mlf
+import mlflow
 import os
 
-MLFLOW_TRACKING_URI = os.environ['MLFLOW_TRACKING_URI']
-MLFLOW_PROXY_PORT = int(os.environ['MLFLOW_PROXY_PORT'])
+def load_mlflow_client():
+    MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI")
+    mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+    return mlflow.MlflowClient(tracking_uri=MLFLOW_TRACKING_URI)
 
-
-mlf.set_tracking_uri(MLFLOW_TRACKING_URI)
-client = mlf.MlflowClient(tracking_uri=MLFLOW_TRACKING_URI)
+mlflow_client = load_mlflow_client()
