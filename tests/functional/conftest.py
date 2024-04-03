@@ -1,7 +1,6 @@
 import shutil
 import pytest
 from mlflow.pyfunc import PythonModel
-from pathlib import Path
 
 from src import config
 
