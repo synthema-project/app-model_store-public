@@ -51,7 +51,11 @@ pipeline {
                 sh 'sleep 10'
                 // Execute the tests
                 withKubeConfig([credentialsId: 'k8s-admin']) {
-                    sh 'kubectl exec ${APP_NAME} -n synthema-dev -c ${APP_NAME}-container -- python -m pytest src/tests/functional'
+                    script {
+                        def namespace = 'synthema-dev'
+                        def podName = sh(script: "kubectl get pods -n ${namespace} -l app=app-model-store -o jsonpath='{.items[0].metadata.name}'", returnStdout: true).trim()
+                        sh "kubectl exec ${podName} -n ${namespace} -- python -m pytest src/tests/functional"
+                    }
                 }
                 // Destroy the deployment
                 withKubeConfig([credentialsId: 'k8s-admin']) {
