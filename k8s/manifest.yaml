@@ -17,7 +17,7 @@ spec:
   template:
     metadata:
       labels:
-        app: synthema-proxy-mlflow
+        app: app-model-store
     spec:
       containers:
         - name: app-model-store-container
