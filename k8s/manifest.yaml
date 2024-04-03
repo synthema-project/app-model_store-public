@@ -27,7 +27,7 @@ spec:
             - containerPort: 80
           env:
             - name: MLFLOW_TRACKING_URI
-              value: "http://mlflow"
+              value: "http://mlflow-svc"
             - name: PYTHONPATH
               value: "/app"
           command: ["python", "src/main.py"]
@@ -37,7 +37,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: app-model-store
+  name: app-model-store-svc
   namespace: synthema-dev
 spec:
   type: NodePort
