@@ -27,6 +27,8 @@ spec:
           env:
             - name: MLFLOW_TRACKING_URI
               value: "http://mlflow"
+            - name: PYTHONPATH
+              value: "/app"
           command: ["python", "src/main.py"]
       imagePullSecrets:
         - name: harbor-cred
