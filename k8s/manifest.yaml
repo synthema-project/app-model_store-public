@@ -21,14 +21,13 @@ spec:
     spec:
       containers:
         - name: app-model-store-container
-          image: harbor.synthema.rid-intrasoft.eu/synthema/dummyrest:DOCKER_TAG
+          image: harbor.synthema.rid-intrasoft.eu/synthema/app-model-store:DOCKER_TAG
           ports:
             - containerPort: 80
           env:
             - name: MLFLOW_TRACKING_URI
               value: "http://mlflow"
-          command: ["ls", "-la"]
-          # command: ["python", "/app/src/main.py"]
+          command: ["python", "src/main.py"]
 ---
 apiVersion: v1
 kind: Service
