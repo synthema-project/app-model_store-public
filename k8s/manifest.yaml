@@ -28,6 +28,8 @@ spec:
             - name: MLFLOW_TRACKING_URI
               value: "http://mlflow"
           command: ["python", "src/main.py"]
+      imagePullSecrets:
+        - name: harbor-cred
 ---
 apiVersion: v1
 kind: Service
