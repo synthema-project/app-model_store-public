@@ -24,6 +24,9 @@ def mock_mlflow_uri(monkeysession, pytestconfig):
     elif env == "local-k8":
         raise NotImplementedError("Kubernetes environment not implemented")
     elif env == "cloud":
+        # Set environment variables for cloud testing
+        monkeysession.setenv("MLFLOW_S3_BUCKET", "mlflow")
+        monkeysession.setenv("MLFLOW_TRACKING_URI", "s3//mflow")
         yield
     else:
         raise ValueError(f"Unknown environment: {env}")
