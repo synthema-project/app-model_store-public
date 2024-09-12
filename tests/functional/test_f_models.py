@@ -8,9 +8,6 @@ from src.main import create_app
 client = TestClient(create_app())
 
 
-def test_bucket_name():
-    assert os.getenv('MLFLOW_S3_BUCKET') == 'mlflow'
-
 @pytest.fixture(scope="module")
 def setup_environment():
     os.environ["MLFLOW_S3_BUCKET"] = "mlflow"
@@ -25,8 +22,6 @@ def test_upload_model(model_generator, mock_mlflow_uri, setup_environment):
 
     file = cloudpickle.dumps(model_generator)
 
-    test_bucket_name()
-
     response = client.post(
         "/models/upload",
         data={"model_name": model_name, "disease": disease, "description": description},
@@ -36,17 +31,17 @@ def test_upload_model(model_generator, mock_mlflow_uri, setup_environment):
     assert response.json()["detail"] == f"Model '{model_name}' registered."
     yield
 
-# def test_download_model(test_upload_model, mock_mlflow_uri):
-#     model_name = "test_model"
-#     response = client.get(f"/models/download/{model_name}/1")
-#     assert response.status_code == 200
-#
-# def test_get_model(test_upload_model, mock_mlflow_uri):
-#     model_name = "test_model"
-#     response = client.get(f"/models/{model_name}")
-#     assert response.status_code == 200
-#
-# def test_get_model_versions(test_upload_model, mock_mlflow_uri):
-#     model_name = "test_model"
-#     response = client.get(f"/models/{model_name}/versions")
-#     assert response.status_code == 200
+def test_download_model(test_upload_model, mock_mlflow_uri):
+    model_name = "test_model"
+    response = client.get(f"/models/download/{model_name}/1")
+    assert response.status_code == 200
+
+def test_get_model(test_upload_model, mock_mlflow_uri):
+    model_name = "test_model"
+    response = client.get(f"/models/{model_name}")
+    assert response.status_code == 200
+
+def test_get_model_versions(test_upload_model, mock_mlflow_uri):
+    model_name = "test_model"
+    response = client.get(f"/models/{model_name}/versions")
+    assert response.status_code == 200

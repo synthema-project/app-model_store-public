@@ -30,8 +30,8 @@ spec:
               value: "http://mlflow-svc"
             - name: PYTHONPATH
               value: "/app"
-            - name: MLFLOW_S3_BUCKET
-              value: "mlflow"
+#            - name: MLFLOW_S3_BUCKET
+#              value: "mlflow"
           command: ["python", "src/main.py"]
       imagePullSecrets:
         - name: harbor-cred

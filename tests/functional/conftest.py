@@ -9,8 +9,8 @@ from src import config
 def pytest_addoption(parser):
     parser.addoption("--env", action="store", default="local", help="Environment to run tests in: localhost or kubernetes")
 
-def test_bucket_name():
-    assert os.getenv('MLFLOW_S3_BUCKET') == 'mlflow'
+# def test_bucket_name():
+#     assert os.getenv('MLFLOW_S3_BUCKET') == 'mlflow'
 
 @pytest.fixture(scope="session")
 def monkeysession(request):
@@ -29,12 +29,12 @@ def mock_mlflow_uri(monkeysession, pytestconfig):
         raise NotImplementedError("Kubernetes environment not implemented")
     elif env == "cloud":
         # Set environment variables for cloud testing
-        monkeysession.setenv("MLFLOW_S3_BUCKET", "mlflow")
-        monkeysession.setenv("MLFLOW_TRACKING_URI", "s3://mflow")
+        # monkeysession.setenv("MLFLOW_S3_BUCKET", "mlflow")
+        # monkeysession.setenv("MLFLOW_TRACKING_URI", "s3://mflow")
         # Debugging: Print the environment variables
-        print(f"MLFLOW_S3_BUCKET: {os.getenv('MLFLOW_S3_BUCKET')}")
-        print(f"MLFLOW_TRACKING_URI: {os.getenv('MLFLOW_TRACKING_URI')}")
-        test_bucket_name()
+        # print(f"MLFLOW_S3_BUCKET: {os.getenv('MLFLOW_S3_BUCKET')}")
+        # print(f"MLFLOW_TRACKING_URI: {os.getenv('MLFLOW_TRACKING_URI')}")
+        # test_bucket_name()
         yield
     else:
         raise ValueError(f"Unknown environment: {env}")
