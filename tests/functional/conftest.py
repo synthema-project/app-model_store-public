@@ -10,7 +10,7 @@ def pytest_addoption(parser):
     parser.addoption("--env", action="store", default="local", help="Environment to run tests in: localhost or kubernetes")
 
 def test_bucket_name():
-    assert os.getenv('MLFLOW_S3_BUCKET') == 'cloud-bucket-name'
+    assert os.getenv('MLFLOW_S3_BUCKET') == 'mlflow'
 
 @pytest.fixture(scope="session")
 def monkeysession(request):
