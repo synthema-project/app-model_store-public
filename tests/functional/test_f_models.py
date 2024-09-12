@@ -31,17 +31,17 @@ def test_upload_model(model_generator, mock_mlflow_uri, setup_environment):
     assert response.json()["detail"] == f"Model '{model_name}' registered."
     yield
 
-def test_download_model(test_upload_model, mock_mlflow_uri):
+def test_download_model(test_upload_model, mock_mlflow_uri, setup_environment):
     model_name = "test_model"
     response = client.get(f"/models/download/{model_name}/1")
     assert response.status_code == 200
 
-def test_get_model(test_upload_model, mock_mlflow_uri):
+def test_get_model(test_upload_model, mock_mlflow_uri, setup_environment):
     model_name = "test_model"
     response = client.get(f"/models/{model_name}")
     assert response.status_code == 200
 
-def test_get_model_versions(test_upload_model, mock_mlflow_uri):
+def test_get_model_versions(test_upload_model, mock_mlflow_uri, setup_environment):
     model_name = "test_model"
     response = client.get(f"/models/{model_name}/versions")
     assert response.status_code == 200
