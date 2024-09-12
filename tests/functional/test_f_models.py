@@ -7,7 +7,7 @@ from src.main import create_app
 
 client = TestClient(create_app())
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="module")
 def setup_environment():
     os.environ["MLFLOW_S3_BUCKET"] = "mlflow"
     yield
