@@ -1,13 +1,20 @@
 from fastapi.testclient import TestClient
 import cloudpickle
 import pytest
+import os
 
 from src.main import create_app
 
 client = TestClient(create_app())
 
+@pytest.fixture(scope="function")
+def setup_environment():
+    os.environ["MLFLOW_S3_BUCKET"] = "mlflow"
+    yield
+    del os.environ["MLFLOW_S3_BUCKET"]
+
 @pytest.fixture(scope="module")
-def test_upload_model(model_generator, mock_mlflow_uri):
+def test_upload_model(model_generator, mock_mlflow_uri, setup_environment):
     model_name = "test_model"
     disease = "AML"
     description = "Test description"
