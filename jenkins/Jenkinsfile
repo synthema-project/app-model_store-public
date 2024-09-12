@@ -54,7 +54,7 @@ pipeline {
                     script {
                         def namespace = 'synthema-dev'
                         def podName = sh(script: "kubectl get pods -n ${namespace} -l app=app-model-store -o jsonpath='{.items[0].metadata.name}'", returnStdout: true).trim()
-                        sh "kubectl exec ${podName} -n ${namespace} -- python -m pytest tests/functional --env cloud"
+                        sh "kubectl exec ${podName} -n ${namespace} -- python -m pytest tests/functional/conftest.py --env cloud"
                     }
                 }
                 // Destroy the deployment
