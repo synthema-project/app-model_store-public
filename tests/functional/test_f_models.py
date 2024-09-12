@@ -26,14 +26,14 @@ def test_upload_model(model_generator, mock_mlflow_uri, setup_environment):
     file = cloudpickle.dumps(model_generator)
 
     test_bucket_name()
-    
-    # response = client.post(
-    #     "/models/upload",
-    #     data={"model_name": model_name, "disease": disease, "description": description},
-    #     files={"file": ("test_file.pkl", file, "application/octet-stream")},
-    # )
-    # assert response.status_code == 201, f"Failed with response: {response.text}"
-    # assert response.json()["detail"] == f"Model '{model_name}' registered."
+
+    response = client.post(
+        "/models/upload",
+        data={"model_name": model_name, "disease": disease, "description": description},
+        files={"file": ("test_file.pkl", file, "application/octet-stream")},
+    )
+    assert response.status_code == 201, f"Failed with response: {response.text}"
+    assert response.json()["detail"] == f"Model '{model_name}' registered."
     yield
 
 # def test_download_model(test_upload_model, mock_mlflow_uri):
