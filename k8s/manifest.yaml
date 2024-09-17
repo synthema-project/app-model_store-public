@@ -27,7 +27,7 @@ spec:
             - containerPort: 80
           env:
             - name: MLFLOW_TRACKING_URI
-              value: "http://mlflow-svc"
+              value: "http://mlflow-dsb-svc.synthema-dev.svc.cluster.local:80"
             - name: PYTHONPATH
               value: "/app"
             - name: MLFLOW_S3_BUCKET
