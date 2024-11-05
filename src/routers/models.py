@@ -71,3 +71,23 @@ async def download_model(model_name: str, version: int):
     model = mlflow.pyfunc.load_model(uri).unwrap_python_model()
     ser_model = cloudpickle.dumps(model)
     return Response(content=ser_model, media_type="application/octet-stream")
+
+
+@router.delete("/{model_name}/versions/{version}")
+async def delete_model_version(model_name: str, version: int):
+    try:
+        # Delete specific model version
+        mlflow_client.delete_model_version(model_name, version)
+        return {"detail": f"Model version {version} of model '{model_name}' has been deleted."}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error deleting model version: {str(e)}")
+
+
+@router.delete("/{model_name}")
+async def delete_model(model_name: str):
+    try:
+        # Delete the entire registered model (and all its versions)
+        mlflow_client.delete_registered_model(model_name)
+        return {"detail": f"Model '{model_name}' and all its versions have been deleted."}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error deleting model: {str(e)}")

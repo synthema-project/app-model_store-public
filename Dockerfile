@@ -3,4 +3,5 @@ WORKDIR /app
 COPY src/requirements.txt src/requirements.txt
 RUN pip install -r src/requirements.txt
 COPY . .
-EXPOSE 80
+EXPOSE 8001
+CMD ["python", "-m", "src.main"]
