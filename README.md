@@ -53,3 +53,13 @@ You can deploy the apps in kubernetes by using the "manifest.yaml" provided unde
 
 ## License
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
+
+This project extends and uses the following Open Softwares, which are compliant with MIT License:
+- FastAPI (MIT License)
+- python-multipart (MIT License)
+- pytest (MIT License)
+- Uvicorn (MIT License)
+- httpx (MIT License)
+- MLFlow (Apache 2.0 License)
+- Numpy (BSD License)
+- boto3 (Apache 2.0 License)
