@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: app-model-store
+  name: app-model-store-deployment
   labels:
     app: app-model-store
     version: v0.1.0
@@ -13,11 +13,11 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: app-model-store
+      app: app-model-store-deployment
   template:
     metadata:
       labels:
-        app: app-model-store
+        app: app-model-store-deployment
     spec:
       containers:
         - name: app-model-store-container
@@ -27,7 +27,7 @@ spec:
             - containerPort: 80
           env:
             - name: MLFLOW_TRACKING_URI
-              value: "http://mlflow-dsb-svc.synthema-dev.svc.cluster.local:80"
+              value: "http://app-model-store-service.synthema-dev.svc.cluster.local:80"
             - name: PYTHONPATH
               value: "/app"
             - name: MLFLOW_S3_BUCKET
@@ -39,12 +39,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: app-model-store-svc
+  name: app-model-store-service
   namespace: synthema-dev
 spec:
   type: NodePort
   selector:
-    app: app-model-store
+    app: app-model-store-deployment
   ports:
     - port: 80
       protocol: TCP
