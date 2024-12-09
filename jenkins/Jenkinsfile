@@ -6,10 +6,11 @@ pipeline {
     }
     environment {
         APP_NAME = "app-model-store"
+        IMAGE_NAME = "${APP_NAME}-proxy"
         MAJOR_RELEASE = 0.1
         DOCKER_TAG = "${MAJOR_RELEASE}.${env.BUILD_NUMBER}"
         DOCKER_REG = "harbor.synthema.rid-intrasoft.eu"
-        DOCKER_REPO = "/synthema/"
+        DOCKER_REPO = "/model_registry_store/"
         DOCKER_REG_CREDS = "harbor-jenkins-creds"
     }
 
@@ -21,8 +22,8 @@ pipeline {
             steps {
                 echo "***** Building Image *****"
                 // Build the image and push a test tag to the remote repository
-                sh 'docker image build -t ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:test .'
-                sh 'docker image push ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:test'
+                sh 'docker image build -t ${DOCKER_REG}${DOCKER_REPO}${IMAGE_NAME}:test .'
+                sh 'docker image push ${DOCKER_REG}${DOCKER_REPO}${IMAGE_NAME}:test'
             }
         }
 
@@ -31,7 +32,7 @@ pipeline {
         // **************************
         stage("Unit_Tests"){
             steps{
-                sh 'docker container run -p 80:80 --name ${APP_NAME} --rm ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:test python -m pytest tests/unit'
+                sh 'docker container run -p 80:80 --name ${IMAGE_NAME} --rm ${DOCKER_REG}${DOCKER_REPO}${IMAGE_NAME}:test python -m pytest tests/unit'
             }
         }
 
@@ -80,10 +81,10 @@ pipeline {
                     // Login to the remote Docker Registry
                     sh 'docker login ${DOCKER_REG} -u ${USERNAME} -p ${PASSWORD}'
                     // Build the images
-                    sh 'docker image tag ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:test ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:latest'
-                    sh 'docker image tag ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:test ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:${DOCKER_TAG}'
-                    sh 'docker image push ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:${DOCKER_TAG}'
-                    sh 'docker image push ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:latest'
+                    sh 'docker image tag ${DOCKER_REG}${DOCKER_REPO}${IMAGE_NAME}:test ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:latest'
+                    sh 'docker image tag ${DOCKER_REG}${DOCKER_REPO}${IMAGE_NAME}:test ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:${DOCKER_TAG}'
+                    sh 'docker image push ${DOCKER_REG}${DOCKER_REPO}${IMAGE_NAME}:${DOCKER_TAG}'
+                    sh 'docker image push ${DOCKER_REG}${DOCKER_REPO}${IMAGE_NAME}:latest'
                 }
             }
         }
