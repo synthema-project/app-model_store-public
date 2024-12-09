@@ -96,7 +96,7 @@ spec:
               memory: "256Mi"
               cpu: "250m"
         - name: proxy-container
-          image: harbor.synthema.rid-intrasoft.eu/synthema/app-model-store:DOCKER_TAG
+          image: harbor.synthema.rid-intrasoft.eu/model_registry_store/app-model-store-proxy:DOCKER_TAG
           imagePullPolicy: Always
           command: [ "sh", "-c"]
           args:
