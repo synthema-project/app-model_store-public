@@ -22,6 +22,9 @@ spec:
       volumes:
         - name: mlflow-setup-volume
           emptyDir: {}
+        - name: secret-volume
+          secret:
+            secretName: auth-dev
       initContainers:
         - name: setup
           image: ghcr.io/mlflow/mlflow:v2.18.0
@@ -58,6 +61,8 @@ spec:
           volumeMounts:
             - name: mlflow-setup-volume
               mountPath: /mlflow-setup
+            - name: secret-volume
+              mountPath: /etc/secrets
           env:
             - name: POSTGRES_USER
               valueFrom:
@@ -88,6 +93,8 @@ spec:
               value: "http://obstorage-minio.synthema-dev:9000"
             - name: ARTIFACTS_DESTINATION
               value: "s3://mlflow"
+            - name: MLFLOW_AUTH_CONFIG_PATH
+              value: /etc/secrets/auth.ini
           resources:
             limits:
                 memory: "2Gi"

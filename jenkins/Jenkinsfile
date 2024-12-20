@@ -36,6 +36,25 @@ pipeline {
             }
         }
 
+        // ***********************
+        // *** CREATE SECRET ***
+        // ***********************
+        stage('Create Secret') {
+            steps {
+                withCredentials([file(credentialsId: 'your-credentials-id', variable: 'SECRET_FILE')]) {
+                        withKubeConfig([credentialsId: 'k8s-admin']) {
+                        sh '''
+                        echo "Using secret file located at $SECRET_FILE"
+                        kubectl create secret generic auth-dev \
+                        --from-file=auth.ini=$SECRET_FILE \
+                        --namespace=synthema-dev \
+                        --dry-run=client -o yaml | kubectl apply -f -
+                        '''
+                    }
+                }
+            }
+        }
+        
         // **************************************
         // *** Functional & Integration Tests ***
         // **************************************
