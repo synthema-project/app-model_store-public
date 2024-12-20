@@ -41,7 +41,7 @@ pipeline {
         // ***********************
         stage('Create Secret') {
             steps {
-                withCredentials([file(credentialsId: 'auth-dev', variable: 'SECRET_FILE')]) {
+                withCredentials([file(credentialsId: 'authfile-dev', variable: 'SECRET_FILE')]) {
                         withKubeConfig([credentialsId: 'k8s-admin']) {
                         sh '''
                         echo "Using secret file located at $SECRET_FILE"
