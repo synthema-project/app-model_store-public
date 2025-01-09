@@ -68,7 +68,7 @@ pipeline {
                     sed -e 's|DOCKER_TAG|test|g' k8s/manifest-test.yaml | kubectl apply -f -
                     '''
                 }
-                sh 'sleep 10'
+                sh 'sleep 60'
                 // Execute the tests
                 withKubeConfig([credentialsId: 'k8s-admin']) {
                     script {
