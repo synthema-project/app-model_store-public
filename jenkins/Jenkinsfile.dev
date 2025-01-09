@@ -130,7 +130,7 @@ pipeline {
                 withKubeConfig([credentialsId: 'k8s-admin']) {
                     sh '''
                     cp k8s/manifest-staging.yaml k8s/manifest-deploy.yaml
-                    sed -e "s|DOCKER_TAG|${DOCKER_TAG}|g" k8s/manifest_deploy.yaml | kubectl apply -f -
+                    sed -e "s|DOCKER_TAG|${DOCKER_TAG}|g" k8s/manifest-deploy.yaml | kubectl apply -f -
                     '''
                }
             }
