@@ -64,7 +64,7 @@ pipeline {
                 // Deploy the test image
                 withKubeConfig([credentialsId: 'k8s-admin']) {
                     sh '''
-                    cp k8s/manifest.yaml k8s/manifest-test.yaml
+                    cp k8s/manifest-dev.yaml k8s/manifest-test.yaml
                     sed -e 's|DOCKER_TAG|test|g' k8s/manifest-test.yaml | kubectl apply -f -
                     '''
                 }
@@ -107,18 +107,29 @@ pipeline {
                 }
             }
         }
-        // **************
-        // *** Deploy ***
-        // **************
-        stage("Deployment"){
+        // *************************
+        // *** Deploy in staging ***
+        // *************************
+        stage("Deployment in staging"){
             when {
                 environment name: "GIT_BRANCH", value: "origin/master"
             }
 
             steps {
+                withCredentials([file(credentialsId: 'authfile-prod', variable: 'SECRET_FILE')]) {
+                        withKubeConfig([credentialsId: 'k8s-admin']) {
+                        sh '''
+                        echo "Using secret file located at $SECRET_FILE"
+                        kubectl create secret generic auth-staging \
+                        --from-file=auth.ini=$SECRET_FILE \
+                        --namespace=synthema-staging \
+                        --dry-run=client -o yaml | kubectl apply -f -
+                        '''
+                    }
+                }
                 withKubeConfig([credentialsId: 'k8s-admin']) {
                     sh '''
-                    cp k8s/manifest.yaml k8s/manifest-deploy.yaml
+                    cp k8s/manifest-staging.yaml k8s/manifest-deploy.yaml
                     sed -e "s|DOCKER_TAG|${DOCKER_TAG}|g" k8s/manifest_deploy.yaml | kubectl apply -f -
                     '''
                }

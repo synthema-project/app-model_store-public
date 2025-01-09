@@ -1,0 +1,179 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-model-store
+  labels:
+    app: app-model-store
+    version: v0.1.0
+    env: dev
+    team: synthema
+    component: model-store
+  namespace: synthema-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-model-store
+  template:
+    metadata:
+      labels:
+        app: app-model-store
+    spec:
+      volumes:
+        - name: mlflow-setup-volume
+          emptyDir: {}
+        - name: secret-volume
+          secret:
+            secretName: auth-staging
+      initContainers:
+        - name: setup
+          image: ghcr.io/mlflow/mlflow:v2.18.0
+          command: [ "sh", "-c" ]
+          args:
+            - |
+              apt-get update && apt-get install -y gcc python3-dev netcat-openbsd && \
+              pip install psycopg2-binary boto3 -t /mlflow-setup
+          volumeMounts:
+            - name: mlflow-setup-volume
+              mountPath: /mlflow-setup
+      containers:
+        - name: mlflow-container
+          image: ghcr.io/mlflow/mlflow:v2.18.0
+          imagePullPolicy: IfNotPresent
+          command: [ "sh", "-c" ]
+          args:
+            - |
+              export PYTHONPATH=/mlflow-setup && \
+              mlflow server --backend-store-uri postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@mstorage-svc.synthema-dev:5432/${DB_NAME} \
+              --host 0.0.0.0 \
+              --port 80 \
+              --artifacts-destination s3://mlflow \
+              --serve-artifacts \
+              --app-name basic-auth
+          ports:
+            - containerPort: 80
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 60
+            periodSeconds: 60
+          volumeMounts:
+            - name: mlflow-setup-volume
+              mountPath: /mlflow-setup
+            - name: secret-volume
+              mountPath: /etc/secrets
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: app-model-store
+                  key: postgres_user
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-model-store
+                  key: postgres_password
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: app-model-store
+                  key: db_name
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: app-model-store
+                  key: minio_key
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-model-store
+                  key: minio_secret
+            - name: MLFLOW_S3_ENDPOINT_URL
+              value: "http://obstorage-minio.synthema-dev:9000"
+            - name: ARTIFACTS_DESTINATION
+              value: "s3://mlflow"
+            - name: MLFLOW_AUTH_CONFIG_PATH
+              value: /etc/secrets/auth.ini
+          resources:
+            limits:
+                memory: "2Gi"
+                cpu: "1000m"
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+        - name: proxy-container
+          image: harbor.synthema.rid-intrasoft.eu/model_registry_store/app-model-store-proxy:DOCKER_TAG
+          imagePullPolicy: Always
+          command: [ "sh", "-c"]
+          args:
+            - while ! nc -z localhost 80; do echo waiting for mlflow; sleep 2; done && python src/main.py
+          env:
+            - name: MLFLOW_TRACKING_URI
+              value: "http://localhost:80"
+            - name: PYTHONPATH
+              value: "/app"
+            - name: MLFLOW_S3_BUCKET
+              value: "mlflow"
+            - name: MLFLOW_TRACKING_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: app-model-store
+                  key: admin_username
+            - name: MLFLOW_TRACKING_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-model-store
+                  key: admin_password
+          ports:
+            - containerPort: 8080
+          resources:
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+      imagePullSecrets:
+        - name: harbor-cred
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-model-store-service
+  namespace: synthema-dev
+spec:
+  type: NodePort
+  selector:
+    app: app-model-store
+  ports:
+    - port: 80
+      protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  name: app-model-store-service-ingress-rule
+  namespace: synthema-dev
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: mlflow.k8s.synthema.rid-intrasoft.eu
+      http:
+        paths:
+          - backend:
+              service:
+                name: app-model-store-service
+                port:
+                  number: 80
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - mlflow.k8s.synthema.rid-intrasoft.eu
+      secretName: secret-tls
