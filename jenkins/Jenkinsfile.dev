@@ -92,7 +92,7 @@ pipeline {
         // *******************************
         stage("Push_Image"){
             when {
-                environment name: "GIT_BRANCH", value: "origin/master"
+                environment name: "GIT_BRANCH", value: "origin/staging"
             }
             steps {
                 withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'harbor-jenkins-creds', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]){
@@ -112,7 +112,7 @@ pipeline {
         // *************************
         stage("Deployment in staging"){
             when {
-                environment name: "GIT_BRANCH", value: "origin/master"
+                environment name: "GIT_BRANCH", value: "origin/staging"
             }
 
             steps {
