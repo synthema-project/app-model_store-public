@@ -4,7 +4,7 @@ pipeline {
         choice(name: 'ENVIRONMENT', choices: ['dev', 'staging', 'prod'], description: 'Deployment environment')
         string(name: 'HELM_CHART', defaultValue: 'oci://registry-1.docker.io/bitnamicharts/mlflow', description: 'Helm chart')
         string(name: 'VALUES_FILE', defaultValue: './values/values.yml', description: 'Archivo de valores por entorno')
-        string(name: 'IMAGE_TAG', defaultValue: '2.19.0-debian-12-r0', description: 'Image tag')
+        string(name: 'IMAGE_TAG', defaultValue: '2.19.0', description: 'Image tag')
         choice(name: 'DEFAULT_PERMISSION', choices: ['NO_PERMISSION', 'MANAGE'], description: 'Default permission for all users')
         string(name: 'INGRESS_ENDPOINT', defaultValue: 'mlflow.dev.k8s.synthema.rid-intrasoft.eu', description: 'Endpoint URL for external access')
         choice(name: 'EXTERNAL_DB_HOST', choices: ['mstorage-svc.synthema-dev', 'metadata-storage.synthema-staging'])
