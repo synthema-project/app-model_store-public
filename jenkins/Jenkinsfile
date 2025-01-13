@@ -44,7 +44,7 @@ pipeline {
                             --set externalS3.host=${EXTERNAL_S3_HOST} \
                             --set externalS3.accessKeyID=${s3_keyId} \
                             --set externalS3.accessKeySecret=${s3_secret} \
-                            --set externalS3.bucket=${params.EXTERNAL_S3_BUCKET_NAME} > rendered-manifests.yaml
+                            --set externalS3.bucket=${params.EXTERNAL_S3_BUCKET_NAME}
                         """
                     }
                 }
