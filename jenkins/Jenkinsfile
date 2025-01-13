@@ -10,7 +10,7 @@ pipeline {
         choice(name: 'EXTERNAL_DB_HOST', choices: ['mstorage-svc.synthema-dev', 'metadata-storage.synthema-staging'])
         choice(name: 'EXTERNAL_DB_DBNAME', choices: ['mlflow'])
         choice(name: 'EXTERNAL_DB_AUTHDBNAME', choices: ['mlflow_auth'])
-        choice(name: 'EXTERNAL_S3_HOST', choices: ['obstorage-minio.synthema-dev', 'metadata-storage.synthema-staging'])
+        choice(name: 'EXTERNAL_S3_HOST', choices: ['obstorage-minio.synthema-dev', 'obstorage-minio.synthema-staging'])
         choice(name: 'EXTERNAL_S3_BUCKET_NAME', choices: ['mlflow'])
     }
     environment {
@@ -27,6 +27,11 @@ pipeline {
                     string(credentialsId: "${env.S3_CREDENTIALS_ID}", variable: 'S3_KEY_SECRET_PAIR')
                 ]) {
                     script {
+                        env.ADMIN_USERNAME = ADMIN_USERNAME
+                        env.ADMIN_PASSWORD = ADMIN_PASSWORD
+                        env.DB_USERNAME = DB_USERNAME
+                        env.DB_PASSWORD = DB_PASSWORD
+
                         def s3_keyIdSecret = S3_KEY_SECRET_PAIR.split(':')
                         env.S3_ACCESS_KEY_ID = s3_keyIdSecret[0]
                         env.S3_ACCESS_KEY_SECRET = s3_keyIdSecret[1]
@@ -64,25 +69,27 @@ pipeline {
             steps {
                 script {
                     echo "Deploying..."
-                    sh """
-                    helm upgrade --install ${params.ENVIRONMENT}-release ${params.HELM_CHART} \
-                        --namespace synthema-${params.ENVIRONMENT} \
-                        --values ${params.VALUES_FILE} \
-                        --set image.tag=${params.IMAGE_TAG} \
-                        --set tracking.auth.username=${env.ADMIN_USERNAME} \
-                        --set tracking.auth.password=${env.ADMIN_PASSWORD} \
-                        --set tracking.auth.extraOverrides.default_permission=${params.DEFAULT_PERMISSION} \
-                        --set tracking.ingress.hostname=${params.INGRESS_ENDPOINT} \
-                        --set externalDatabase.user=${env.DB_USERNAME} \
-                        --set externalDatabase.password=${env.DB_PASSWORD} \
-                        --set externalDatabase.host=${params.EXTERNAL_DB_HOST} \
-                        --set externalDatabase.database=${params.EXTERNAL_DB_DBNAME} \
-                        --set externalDatabase.authDatabase=${params.EXTERNAL_DB_AUTHDBNAME} \
-                        --set externalS3.host=${params.EXTERNAL_S3_HOST} \
-                        --set externalS3.accessKeyID=${env.S3_ACCESS_KEY_ID} \
-                        --set externalS3.accessKeySecret=${env.S3_ACCESS_KEY_SECRET} \
-                        --set externalS3.bucket=${params.EXTERNAL_S3_BUCKET_NAME}
-                    """
+                    withKubeConfig([credentialsId: 'k8s-admin']) {
+                        sh """
+                        helm upgrade --install ${params.ENVIRONMENT}-release ${params.HELM_CHART} \
+                            --namespace synthema-${params.ENVIRONMENT} \
+                            --values ${params.VALUES_FILE} \
+                            --set image.tag=${params.IMAGE_TAG} \
+                            --set tracking.auth.username=${env.ADMIN_USERNAME} \
+                            --set tracking.auth.password=${env.ADMIN_PASSWORD} \
+                            --set tracking.auth.extraOverrides.default_permission=${params.DEFAULT_PERMISSION} \
+                            --set tracking.ingress.hostname=${params.INGRESS_ENDPOINT} \
+                            --set externalDatabase.user=${env.DB_USERNAME} \
+                            --set externalDatabase.password=${env.DB_PASSWORD} \
+                            --set externalDatabase.host=${params.EXTERNAL_DB_HOST} \
+                            --set externalDatabase.database=${params.EXTERNAL_DB_DBNAME} \
+                            --set externalDatabase.authDatabase=${params.EXTERNAL_DB_AUTHDBNAME} \
+                            --set externalS3.host=${params.EXTERNAL_S3_HOST} \
+                            --set externalS3.accessKeyID=${env.S3_ACCESS_KEY_ID} \
+                            --set externalS3.accessKeySecret=${env.S3_ACCESS_KEY_SECRET} \
+                            --set externalS3.bucket=${params.EXTERNAL_S3_BUCKET_NAME}
+                        """
+                    }
                 }
             }
         }
