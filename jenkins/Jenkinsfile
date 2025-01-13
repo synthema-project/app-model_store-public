@@ -44,7 +44,7 @@ pipeline {
                 script {
                     echo "Verifying values..."
                     sh """
-                    helm template ${params.ENVIRONMENT}-release ${params.HELM_CHART} \
+                    helm template app-model-store-${params.ENVIRONMENT}-release ${params.HELM_CHART} \
                         --namespace synthema-${params.ENVIRONMENT} \
                         --values ${params.VALUES_FILE} \
                         --set image.tag=${params.IMAGE_TAG} \
@@ -71,7 +71,7 @@ pipeline {
                     echo "Deploying..."
                     withKubeConfig([credentialsId: 'k8s-admin']) {
                         sh """
-                        helm upgrade --install ${params.ENVIRONMENT}-release ${params.HELM_CHART} \
+                        helm upgrade --install app-model-store-${params.ENVIRONMENT}-release ${params.HELM_CHART} \
                             --namespace synthema-${params.ENVIRONMENT} \
                             --values ${params.VALUES_FILE} \
                             --set image.tag=${params.IMAGE_TAG} \
