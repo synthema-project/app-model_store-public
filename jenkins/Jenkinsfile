@@ -6,95 +6,82 @@ pipeline {
         string(name: 'VALUES_FILE', defaultValue: './values/values.yaml', description: 'Archivo de valores por entorno')
         string(name: 'IMAGE_TAG', defaultValue: '2.19.0-debian-12-r0', description: 'Image tag')
         choice(name: 'DEFAULT_PERMISSION', choices: ['NO_PERMISSION', 'MANAGE'], description: 'Default permission for all users')
-        string(name: 'INGRESS_ENDPOINT', defaultValue: 'mlflow.dev.k8s.synthema.rid-intrasoft.eu', description: 'Endpoint url for external access')
+        string(name: 'INGRESS_ENDPOINT', defaultValue: 'mlflow.dev.k8s.synthema.rid-intrasoft.eu', description: 'Endpoint URL for external access')
         choice(name: 'EXTERNAL_DB_HOST', choices: ['mstorage-svc.synthema-dev', 'metadata-storage.synthema-staging'])
         choice(name: 'EXTERNAL_DB_DBNAME', choices: ['mlflow'])
         choice(name: 'EXTERNAL_DB_AUTHDBNAME', choices: ['mlflow_auth'])
         choice(name: 'EXTERNAL_S3_HOST', choices: ['obstorage-minio.synthema-dev', 'metadata-storage.synthema-staging'])
         choice(name: 'EXTERNAL_S3_BUCKET_NAME', choices: ['mlflow'])
     }
+    environment {
+        ADMIN_CREDENTIALS_ID = "admin-${params.ENVIRONMENT}"
+        DB_CREDENTIALS_ID = "db-${params.ENVIRONMENT}"
+        S3_CREDENTIALS_ID = "s3_keyid-secret-${params.ENVIRONMENT}"
+    }
     stages {
-        stage('Verify Values') {
+        stage('Setup Environment') {
             steps {
                 withCredentials([
-                    usernamePassword(credentialsId: 'admin-${ENVIRONMENT}', usernameVariable: 'ADMIN_USERNAME', passwordVariable: 'ADMIN_PASSWORD'),
-                    usernamePassword(credentialsId: 'db-${ENVIRONMENT}', usernameVariable: 'DB_USERNAME', passwordVariable: 'DB_PASSWORD'),
-                    string(credentialsId: 's3_keyid-secret-${ENVIRONMENT}', variable: 'S3_KEY_SECRET_PAIR')
+                    usernamePassword(credentialsId: "${env.ADMIN_CREDENTIALS_ID}", usernameVariable: 'ADMIN_USERNAME', passwordVariable: 'ADMIN_PASSWORD'),
+                    usernamePassword(credentialsId: "${env.DB_CREDENTIALS_ID}", usernameVariable: 'DB_USERNAME', passwordVariable: 'DB_PASSWORD'),
+                    string(credentialsId: "${env.S3_CREDENTIALS_ID}", variable: 'S3_KEY_SECRET_PAIR')
                 ]) {
                     script {
                         def s3_keyIdSecret = S3_KEY_SECRET_PAIR.split(':')
-                        def s3_keyId = s3_keyIdSecret[0]
-                        def s3_secret = s3_keyIdSecret[1]
-
-                        echo "Verifying values..."
-                        sh """
-                        helm template ${params.ENVIRONMENT}-release ${params.HELM_CHART} \
-                            --namespace synthema-${params.ENVIRONMENT} \
-                            --values ${params.VALUES_FILE} \
-                            --set image.tag=${params.IMAGE_TAG} \
-                            --set tracking.auth.username=${ADMIN_USERNAME} \
-                            --set tracking.auth.password=${ADMIN_PASSWORD} \
-                            --set tracking.auth.extraOverrides.default_permission=${DEFAULT_PERMISSION} \
-                            --set tracking.ingress.hostname=${INGRESS_ENDPOINT} \
-                            --set externalDatabase.user=${DB_USERNAME} \
-                            --set externalDatabase.password=${DB_PASSWORD} \
-                            --set externalDatabase.host=${EXTERNAL_DB_HOST} \
-                            --set externalDatabase.database=${EXTERNAL_DB_DBNAME} \
-                            --set externalDatabase.authDatabase=${EXTERNAL_DB_AUTHDBNAME} \
-                            --set externalS3.host=${EXTERNAL_S3_HOST} \
-                            --set externalS3.accessKeyID=${s3_keyId} \
-                            --set externalS3.accessKeySecret=${s3_secret} \
-                            --set externalS3.bucket=${params.EXTERNAL_S3_BUCKET_NAME}
-                        """
+                        env.S3_ACCESS_KEY_ID = s3_keyIdSecret[0]
+                        env.S3_ACCESS_KEY_SECRET = s3_keyIdSecret[1]
                     }
+                }
+            }
+        }
+        stage('Verify Values') {
+            steps {
+                script {
+                    echo "Verifying values..."
+                    sh """
+                    helm template ${params.ENVIRONMENT}-release ${params.HELM_CHART} \
+                        --namespace synthema-${params.ENVIRONMENT} \
+                        --values ${params.VALUES_FILE} \
+                        --set image.tag=${params.IMAGE_TAG} \
+                        --set tracking.auth.username=${env.ADMIN_USERNAME} \
+                        --set tracking.auth.password=${env.ADMIN_PASSWORD} \
+                        --set tracking.auth.extraOverrides.default_permission=${params.DEFAULT_PERMISSION} \
+                        --set tracking.ingress.hostname=${params.INGRESS_ENDPOINT} \
+                        --set externalDatabase.user=${env.DB_USERNAME} \
+                        --set externalDatabase.password=${env.DB_PASSWORD} \
+                        --set externalDatabase.host=${params.EXTERNAL_DB_HOST} \
+                        --set externalDatabase.database=${params.EXTERNAL_DB_DBNAME} \
+                        --set externalDatabase.authDatabase=${params.EXTERNAL_DB_AUTHDBNAME} \
+                        --set externalS3.host=${params.EXTERNAL_S3_HOST} \
+                        --set externalS3.accessKeyID=${env.S3_ACCESS_KEY_ID} \
+                        --set externalS3.accessKeySecret=${env.S3_ACCESS_KEY_SECRET} \
+                        --set externalS3.bucket=${params.EXTERNAL_S3_BUCKET_NAME}
+                    """
                 }
             }
         }
         stage('Deploy with Helm') {
             steps {
-                // Despliegue con Helm usando secretos de usuario y contraseña
-                withKubeConfig([credentialsId: 'k8s-admin']) {
-                    withCredentials([
-                        usernamePassword(credentialsId: 'admin-${ENVIRONMENT}', usernameVariable: 'ADMIN_USERNAME', passwordVariable: 'ADMIN_PASSWORD'),
-                        usernamePassword(credentialsId: 'db-${ENVIRONMENT}', usernameVariable: 'DB_USERNAME', passwordVariable: 'DB_PASSWORD'),
-                        string(credentialsId: 's3_keyid-secret-${ENVIRONMENT}', variable: 'S3_KEY_SECRET_PAIR')
-
-                    ]) {
-                        script {
-                            def s3_keyIdSecret = S3_KEY_SECRET_PAIR.split(':')
-                            def s3_keyId = s3_keyIdSecret[0]
-                            def s3_secret = s3_keyIdSecret[1]
-
-                            sh """
-                            helm upgrade --install ${params.ENVIRONMENT}-release ${params.HELM_CHART} \
-                                --namespace synthema-${params.ENVIRONMENT} \
-                                --values ${params.VALUES_FILE} \
-                                --set image.tag=${params.IMAGE_TAG} \
-                                --set tracking.auth.username=${ADMIN_USERNAME} \
-                                --set tracking.auth.password=${ADMIN_PASSWORD} \
-                                --set tracking.auth.extraOverrides.default_permission=${DEFAULT_PERMISSION}
-                                --set tracking.ingress.hostname=${INGRESS_ENDPOINT} \
-                                --set externalDatabase.user=${DB_USERNAME} \
-                                --set externalDatabase.password=${DB_PASSWORD} \
-                                --set externalDatabase.host=${EXTERNAL_DB_HOST} \
-                                --set externalDatabase.database=${EXTERNAL_DB_DBNAME} \
-                                --set externalDatabase.authDatabase=${EXTERNAL_DB_AUTHDBNAME} \
-                                --set externalS3.host=${EXTERNAL_S3_HOST} \
-                                --set externalS3.accessKeyID=${s3_keyID} \
-                                --set externalS3.accessKeySecret=${s3_secret} \
-                                --set externalS3.bucket=${BUCKET_NAME}
-                            """
-                        }
-                    }
-                }
-            }
-        }
-        stage('Post-Deployment Tests') {
-            steps {
-                // Verificar el estado del despliegue
                 script {
+                    echo "Deploying..."
                     sh """
-                    kubectl rollout status deployment/${params.ENVIRONMENT}-app -n ${params.ENVIRONMENT}
+                    helm upgrade --install ${params.ENVIRONMENT}-release ${params.HELM_CHART} \
+                        --namespace synthema-${params.ENVIRONMENT} \
+                        --values ${params.VALUES_FILE} \
+                        --set image.tag=${params.IMAGE_TAG} \
+                        --set tracking.auth.username=${env.ADMIN_USERNAME} \
+                        --set tracking.auth.password=${env.ADMIN_PASSWORD} \
+                        --set tracking.auth.extraOverrides.default_permission=${params.DEFAULT_PERMISSION} \
+                        --set tracking.ingress.hostname=${params.INGRESS_ENDPOINT} \
+                        --set externalDatabase.user=${env.DB_USERNAME} \
+                        --set externalDatabase.password=${env.DB_PASSWORD} \
+                        --set externalDatabase.host=${params.EXTERNAL_DB_HOST} \
+                        --set externalDatabase.database=${params.EXTERNAL_DB_DBNAME} \
+                        --set externalDatabase.authDatabase=${params.EXTERNAL_DB_AUTHDBNAME} \
+                        --set externalS3.host=${params.EXTERNAL_S3_HOST} \
+                        --set externalS3.accessKeyID=${env.S3_ACCESS_KEY_ID} \
+                        --set externalS3.accessKeySecret=${env.S3_ACCESS_KEY_SECRET} \
+                        --set externalS3.bucket=${params.EXTERNAL_S3_BUCKET_NAME}
                     """
                 }
             }
