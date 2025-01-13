@@ -1,0 +1,60 @@
+run:
+  enabled: false
+
+postgresql:
+  enabled: false
+
+minio:
+  enabled: false
+
+image:
+  registry: docker.io
+  repository: bitnami/mlflow
+  pullPolicy: IfNotPresent
+
+tracking:
+  enabled: true
+  replicaCount: 1
+  host: "0.0.0.0"
+  containerPorts:
+    http: 5000
+
+  # Configuración de autenticación
+  auth:
+    enabled: true
+
+  # Configuración de recursos
+  resourcesPreset: "medium"
+  resources: {}
+
+  # Persistencia deshabilitada
+  persistence:
+    enabled: false
+
+  # Configuración del servicio
+  service:
+    type: ClusterIP
+    ports:
+      http: 80
+      https: 443
+
+  # Configuración del ingress
+  ingress:
+    enabled: true
+    annotations:
+      nginx.ingress.kubernetes.io/rewrite-target: /
+      kubernetes.io/ingress.class: "nginx"
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    tls: true
+    tlsSecret: secret-tls
+
+externalDatabase:
+  dialectDriver: postgresql
+  port: 5432
+
+externalS3:
+  port: 9000
+  useCredentialsInSecret: false
+  protocol: "https"
+  bucket: "mlflow"
+  serveArtifacts: true

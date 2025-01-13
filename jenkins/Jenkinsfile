@@ -1,0 +1,103 @@
+pipeline {
+    agent any
+    parameters {
+        choice(name: 'ENVIRONMENT', choices: ['dev', 'staging', 'prod'], description: 'Deployment environment')
+        string(name: 'HELM_CHART', defaultValue: 'oci://registry-1.docker.io/bitnamicharts/mlflow', description: 'Helm chart')
+        string(name: 'VALUES_FILE', defaultValue: './values/values.yaml', description: 'Archivo de valores por entorno')
+        string(name: 'IMAGE_TAG', defaultValue: '2.19.0-debian-12-r0', description: 'Image tag')
+        choice(name: 'DEFAULT_PERMISSION', choices: ['NO_PERMISSION', 'MANAGE'], description: 'Default permission for all users')
+        string(name: 'INGRESS_ENDPOINT', defaultValue: 'mlflow.dev.k8s.synthema.rid-intrasoft.eu', description: 'Endpoint url for external access')
+        choice(name: 'EXTERNAL_DB_HOST', choices: ['mstorage-svc.synthema-dev', 'metadata-storage.synthema-staging'])
+        choice(name: 'EXTERNAL_DB_DBNAME', choices: ['mlflow'])
+        choice(name: 'EXTERNAL_DB_AUTHDBNAME', choices: ['mlflow_auth'])
+        choice(name: 'EXTERNAL_S3_HOST', choices: ['obstorage-minio.synthema-dev', 'metadata-storage.synthema-staging'])
+        choice(name: 'EXTERNAL_S3_BUCKET_NAME', choices: ['mlflow'])
+    }
+    stages {
+        stage('Verify Values') {
+            steps {
+                withCredentials([
+                    usernamePassword(credentialsId: 'admin-${ENVIRONMENT}', usernameVariable: 'ADMIN_USERNAME', passwordVariable: 'ADMIN_PASSWORD'),
+                    usernamePassword(credentialsId: 'db-${ENVIRONMENT}', usernameVariable: 'DB_USERNAME', passwordVariable: 'DB_PASSWORD'),
+                    string(credentialsId: 's3_keyid-secret-${ENVIRONMENT}', variable: 'S3_KEY_SECRET_PAIR')
+                ]) {
+                    script {
+                        def s3_keyIdSecret = S3_KEY_SECRET_PAIR.split(':')
+                        def s3_keyId = s3_keyIdSecret[0]
+                        def s3_secret = s3_keyIdSecret[1]
+
+                        echo "Verifying values..."
+                        sh """
+                        helm template ${params.ENVIRONMENT}-release ${params.HELM_CHART} \
+                            --namespace synthema-${params.ENVIRONMENT} \
+                            --values ${params.VALUES_FILE} \
+                            --set image.tag=${params.IMAGE_TAG} \
+                            --set tracking.auth.username=${ADMIN_USERNAME} \
+                            --set tracking.auth.password=${ADMIN_PASSWORD} \
+                            --set tracking.auth.extraOverrides.default_permission=${DEFAULT_PERMISSION} \
+                            --set tracking.ingress.hostname=${INGRESS_ENDPOINT} \
+                            --set externalDatabase.user=${DB_USERNAME} \
+                            --set externalDatabase.password=${DB_PASSWORD} \
+                            --set externalDatabase.host=${EXTERNAL_DB_HOST} \
+                            --set externalDatabase.database=${EXTERNAL_DB_DBNAME} \
+                            --set externalDatabase.authDatabase=${EXTERNAL_DB_AUTHDBNAME} \
+                            --set externalS3.host=${EXTERNAL_S3_HOST} \
+                            --set externalS3.accessKeyID=${s3_keyId} \
+                            --set externalS3.accessKeySecret=${s3_secret} \
+                            --set externalS3.bucket=${params.EXTERNAL_S3_BUCKET_NAME} > rendered-manifests.yaml
+                        """
+                    }
+                }
+            }
+        }
+        stage('Deploy with Helm') {
+            steps {
+                // Despliegue con Helm usando secretos de usuario y contraseña
+                withKubeConfig([credentialsId: 'k8s-admin']) {
+                    withCredentials([
+                        usernamePassword(credentialsId: 'admin-${ENVIRONMENT}', usernameVariable: 'ADMIN_USERNAME', passwordVariable: 'ADMIN_PASSWORD'),
+                        usernamePassword(credentialsId: 'db-${ENVIRONMENT}', usernameVariable: 'DB_USERNAME', passwordVariable: 'DB_PASSWORD'),
+                        string(credentialsId: 's3_keyid-secret-${ENVIRONMENT}', variable: 'S3_KEY_SECRET_PAIR')
+
+                    ]) {
+                        script {
+                            def s3_keyIdSecret = S3_KEY_SECRET_PAIR.split(':')
+                            def s3_keyId = s3_keyIdSecret[0]
+                            def s3_secret = s3_keyIdSecret[1]
+
+                            sh """
+                            helm upgrade --install ${params.ENVIRONMENT}-release ${params.HELM_CHART} \
+                                --namespace synthema-${params.ENVIRONMENT} \
+                                --values ${params.VALUES_FILE} \
+                                --set image.tag=${params.IMAGE_TAG} \
+                                --set tracking.auth.username=${ADMIN_USERNAME} \
+                                --set tracking.auth.password=${ADMIN_PASSWORD} \
+                                --set tracking.auth.extraOverrides.default_permission=${DEFAULT_PERMISSION}
+                                --set tracking.ingress.hostname=${INGRESS_ENDPOINT} \
+                                --set externalDatabase.user=${DB_USERNAME} \
+                                --set externalDatabase.password=${DB_PASSWORD} \
+                                --set externalDatabase.host=${EXTERNAL_DB_HOST} \
+                                --set externalDatabase.database=${EXTERNAL_DB_DBNAME} \
+                                --set externalDatabase.authDatabase=${EXTERNAL_DB_AUTHDBNAME} \
+                                --set externalS3.host=${EXTERNAL_S3_HOST} \
+                                --set externalS3.accessKeyID=${s3_keyID} \
+                                --set externalS3.accessKeySecret=${s3_secret} \
+                                --set externalS3.bucket=${BUCKET_NAME}
+                            """
+                        }
+                    }
+                }
+            }
+        }
+        stage('Post-Deployment Tests') {
+            steps {
+                // Verificar el estado del despliegue
+                script {
+                    sh """
+                    kubectl rollout status deployment/${params.ENVIRONMENT}-app -n ${params.ENVIRONMENT}
+                    """
+                }
+            }
+        }
+    }
+}

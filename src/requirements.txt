@@ -1,9 +1,0 @@
-mlflow-skinny~=2.18
-numpy
-pandas
-fastapi
-uvicorn[standard]
-python-multipart
-pytest
-httpx
-boto3
