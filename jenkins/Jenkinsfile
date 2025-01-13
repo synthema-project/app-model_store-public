@@ -1,129 +1,97 @@
 pipeline {
-    agent {
-        node {
-            label 'jenkins-dev'
-        }
+    agent any
+    parameters {
+        choice(name: 'ENVIRONMENT', choices: ['dev', 'staging', 'prod'], description: 'Deployment environment')
+        string(name: 'HELM_CHART', defaultValue: 'oci://registry-1.docker.io/bitnamicharts/mlflow', description: 'Helm chart')
+        string(name: 'VALUES_FILE', defaultValue: './values/values.yml', description: 'Archivo de valores por entorno')
+        string(name: 'IMAGE_TAG', defaultValue: '2.19.0-debian-12-r0', description: 'Image tag')
+        choice(name: 'DEFAULT_PERMISSION', choices: ['NO_PERMISSION', 'MANAGE'], description: 'Default permission for all users')
+        string(name: 'INGRESS_ENDPOINT', defaultValue: 'mlflow.dev.k8s.synthema.rid-intrasoft.eu', description: 'Endpoint URL for external access')
+        choice(name: 'EXTERNAL_DB_HOST', choices: ['mstorage-svc.synthema-dev', 'metadata-storage.synthema-staging'])
+        choice(name: 'EXTERNAL_DB_DBNAME', choices: ['mlflow'])
+        choice(name: 'EXTERNAL_DB_AUTHDBNAME', choices: ['mlflow_auth'])
+        choice(name: 'EXTERNAL_S3_HOST', choices: ['obstorage-minio.synthema-dev', 'obstorage-minio.synthema-staging'])
+        choice(name: 'EXTERNAL_S3_BUCKET_NAME', choices: ['mlflow'])
     }
     environment {
-        APP_NAME = "app-model-store"
-        IMAGE_NAME = "${APP_NAME}-proxy"
-        MAJOR_RELEASE = 0.1
-        DOCKER_TAG = "${MAJOR_RELEASE}.${env.BUILD_NUMBER}"
-        DOCKER_REG = "harbor.synthema.rid-intrasoft.eu"
-        DOCKER_REPO = "/model_registry_store/"
-        DOCKER_REG_CREDS = "harbor-jenkins-creds"
+        ADMIN_CREDENTIALS_ID = "admin-${params.ENVIRONMENT}"
+        DB_CREDENTIALS_ID = "db-${params.ENVIRONMENT}"
+        S3_CREDENTIALS_ID = "s3_keyid-secret-${params.ENVIRONMENT}"
     }
-
     stages {
-        // *************************
-        // *** IMAGE BUILD STAGE ***
-        // *************************
-        stage("Build_Images"){
+        stage('Setup Environment') {
             steps {
-                echo "***** Building Image *****"
-                // Build the image and push a test tag to the remote repository
-                sh 'docker image build -t ${DOCKER_REG}${DOCKER_REPO}${IMAGE_NAME}:test .'
-                sh 'docker image push ${DOCKER_REG}${DOCKER_REPO}${IMAGE_NAME}:test'
-            }
-        }
-
-        // **************************
-        // *** RUN THE UNIT TESTS ***
-        // **************************
-        stage("Unit_Tests"){
-            steps{
-                sh 'docker container run -p 80:80 --name ${IMAGE_NAME} --rm ${DOCKER_REG}${DOCKER_REPO}${IMAGE_NAME}:test python -m pytest tests/unit'
-            }
-        }
-
-        // **************************************
-        // *** Functional & Integration Tests ***
-        // **************************************
-        stage("Func_Tests"){
-            steps {
-                echo "***** Running Functional Tests *****"
-                // Deploy the test image
-                withKubeConfig([credentialsId: 'k8s-admin']) {
-                    sh '''
-                    cp k8s/manifest.yaml k8s/manifest-test.yaml
-                    sed -e 's|DOCKER_TAG|test|g' k8s/manifest-test.yaml | kubectl apply -f -
-                    '''
-                }
-                sh 'sleep 10'
-                // Execute the tests
-                withKubeConfig([credentialsId: 'k8s-admin']) {
+                withCredentials([
+                    usernamePassword(credentialsId: "${env.ADMIN_CREDENTIALS_ID}", usernameVariable: 'ADMIN_USERNAME', passwordVariable: 'ADMIN_PASSWORD'),
+                    usernamePassword(credentialsId: "${env.DB_CREDENTIALS_ID}", usernameVariable: 'DB_USERNAME', passwordVariable: 'DB_PASSWORD'),
+                    string(credentialsId: "${env.S3_CREDENTIALS_ID}", variable: 'S3_KEY_SECRET_PAIR')
+                ]) {
                     script {
-                        def namespace = 'synthema-dev'
-                        def podName = sh(script: "kubectl get pods -n ${namespace} -l app=app-model-store -o jsonpath='{.items[0].metadata.name}'", returnStdout: true).trim()
-                        sh "kubectl exec ${podName} -n ${namespace} -c proxy-container -- python -m pytest tests/functional/conftest.py tests/functional/test_f_models.py --env cloud"
+                        env.ADMIN_USERNAME = ADMIN_USERNAME
+                        env.ADMIN_PASSWORD = ADMIN_PASSWORD
+                        env.DB_USERNAME = DB_USERNAME
+                        env.DB_PASSWORD = DB_PASSWORD
+
+                        def s3_keyIdSecret = S3_KEY_SECRET_PAIR.split(':')
+                        env.S3_ACCESS_KEY_ID = s3_keyIdSecret[0]
+                        env.S3_ACCESS_KEY_SECRET = s3_keyIdSecret[1]
                     }
                 }
-                // Destroy the deployment
-                withKubeConfig([credentialsId: 'k8s-admin']) {
-                    sh '''
-                    kubectl delete -f k8s/manifest-test.yaml
-                    rm k8s/manifest-test.yaml
-                    '''
-               }
             }
         }
-
-        // *******************************
-        // *** Push Images To Registry ***
-        // *******************************
-        stage("Push_Image"){
-            when {
-                environment name: "GIT_BRANCH", value: "origin/master"
-            }
+        stage('Verify Values') {
             steps {
-                withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'harbor-jenkins-creds', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]){
-                    echo "***** Push Container Image *****"
-                    // Login to the remote Docker Registry
-                    sh 'docker login ${DOCKER_REG} -u ${USERNAME} -p ${PASSWORD}'
-                    // Build the images
-                    sh 'docker image tag ${DOCKER_REG}${DOCKER_REPO}${IMAGE_NAME}:test ${DOCKER_REG}${DOCKER_REPO}${IMAGE_NAME}:latest'
-                    sh 'docker image tag ${DOCKER_REG}${DOCKER_REPO}${IMAGE_NAME}:test ${DOCKER_REG}${DOCKER_REPO}${IMAGE_NAME}:${DOCKER_TAG}'
-                    sh 'docker image push ${DOCKER_REG}${DOCKER_REPO}${IMAGE_NAME}:${DOCKER_TAG}'
-                    sh 'docker image push ${DOCKER_REG}${DOCKER_REPO}${IMAGE_NAME}:latest'
+                script {
+                    echo "Verifying values..."
+                    sh """
+                    helm template app-model-store-${params.ENVIRONMENT}-release ${params.HELM_CHART} \
+                        --namespace synthema-${params.ENVIRONMENT} \
+                        --values ${params.VALUES_FILE} \
+                        --set image.tag=${params.IMAGE_TAG} \
+                        --set tracking.auth.username=${env.ADMIN_USERNAME} \
+                        --set tracking.auth.password=${env.ADMIN_PASSWORD} \
+                        --set tracking.auth.extraOverrides.default_permission=${params.DEFAULT_PERMISSION} \
+                        --set tracking.ingress.hostname=${params.INGRESS_ENDPOINT} \
+                        --set externalDatabase.user=${env.DB_USERNAME} \
+                        --set externalDatabase.password=${env.DB_PASSWORD} \
+                        --set externalDatabase.host=${params.EXTERNAL_DB_HOST} \
+                        --set externalDatabase.database=${params.EXTERNAL_DB_DBNAME} \
+                        --set externalDatabase.authDatabase=${params.EXTERNAL_DB_AUTHDBNAME} \
+                        --set externalS3.host=${params.EXTERNAL_S3_HOST} \
+                        --set externalS3.accessKeyID=${env.S3_ACCESS_KEY_ID} \
+                        --set externalS3.accessKeySecret=${env.S3_ACCESS_KEY_SECRET} \
+                        --set externalS3.bucket=${params.EXTERNAL_S3_BUCKET_NAME}
+                    """
                 }
             }
         }
-        // **************
-        // *** Deploy ***
-        // **************
-        stage("Deployment"){
-            when {
-                environment name: "GIT_BRANCH", value: "origin/master"
-            }
-
+        stage('Deploy with Helm') {
             steps {
-                withKubeConfig([credentialsId: 'k8s-admin']) {
-                    sh '''
-                    cp k8s/manifest.yaml k8s/manifest-deploy.yaml
-                    sed -e "s|DOCKER_TAG|${DOCKER_TAG}|g" k8s/manifest_deploy.yaml | kubectl apply -f -
-                    '''
-               }
+                script {
+                    echo "Deploying..."
+                    withKubeConfig([credentialsId: 'k8s-admin']) {
+                        sh """
+                        helm upgrade --install app-model-store-${params.ENVIRONMENT}-release ${params.HELM_CHART} \
+                            --namespace synthema-${params.ENVIRONMENT} \
+                            --values ${params.VALUES_FILE} \
+                            --set image.tag=${params.IMAGE_TAG} \
+                            --set tracking.auth.username=${env.ADMIN_USERNAME} \
+                            --set tracking.auth.password=${env.ADMIN_PASSWORD} \
+                            --set tracking.auth.extraOverrides.default_permission=${params.DEFAULT_PERMISSION} \
+                            --set tracking.ingress.hostname=${params.INGRESS_ENDPOINT} \
+                            --set externalDatabase.user=${env.DB_USERNAME} \
+                            --set externalDatabase.password=${env.DB_PASSWORD} \
+                            --set externalDatabase.host=${params.EXTERNAL_DB_HOST} \
+                            --set externalDatabase.database=${params.EXTERNAL_DB_DBNAME} \
+                            --set externalDatabase.authDatabase=${params.EXTERNAL_DB_AUTHDBNAME} \
+                            --set externalS3.host=${params.EXTERNAL_S3_HOST} \
+                            --set externalS3.accessKeyID=${env.S3_ACCESS_KEY_ID} \
+                            --set externalS3.accessKeySecret=${env.S3_ACCESS_KEY_SECRET} \
+                            --set externalS3.bucket=${params.EXTERNAL_S3_BUCKET_NAME}
+                        """
+                    }
+                }
             }
         }
-    }
-    post{
-        always {
-            echo "***** Cleaning Up *****"
-            // Clean up the Docker resources
-            sh '''
-            docker image rm ${DOCKER_REG}${DOCKER_REPO}${IMAGE_NAME}:${DOCKER_TAG} || true
-            docker image rm ${DOCKER_REG}${DOCKER_REPO}${IMAGE_NAME}:latest || true
-            docker image rm ${DOCKER_REG}${DOCKER_REPO}${IMAGE_NAME}:test || true
-            '''
-        }
-        // failure{
-        // //     // slackSend (color: "#FF0000", message: "Job FAILED: '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})")
-        // //     sh 'docker image rm ${APP_NAME}:test &> /dev/null || True'
-        // //     sh 'DOCKER_TAG=test docker compose down --rmi all'
-        // }
-
-        // success{
-        //     slackSend (color: "#008000", message: "Job SUCCESSFUL: '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})")
-        // }
     }
 }
