@@ -54,7 +54,7 @@ externalDatabase:
 
 externalS3:
   port: 9000
-  useCredentialsInSecret: false
+  useCredentialsInSecret: true
   protocol: "https"
   bucket: "mlflow"
   serveArtifacts: true
